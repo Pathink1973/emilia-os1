@@ -1,36 +1,66 @@
 import config from './config.js';
 
-class ChatApp {
+class EmiliaAI {
     constructor() {
-        this.recordButton = document.getElementById('recordButton');
-        this.userInput = document.getElementById('userInput');
-        this.sendButton = document.getElementById('sendButton');
-        this.chatMessages = document.getElementById('chat-messages');
+        this.micButton = document.getElementById('micButton');
         this.status = document.getElementById('status');
+        this.messagesContainer = document.getElementById('messages');
+        this.isRecording = false;
         this.mediaRecorder = null;
         this.audioChunks = [];
-        this.isRecording = false;
+        this.silenceTimer = null;
+        this.SILENCE_THRESHOLD = 3000; // 3 seconds of silence
         this.conversationHistory = [{
             role: 'system',
             content: config.SYSTEM_PROMPT
         }];
 
-        this.setupEventListeners();
+        this.initializeEventListeners();
+        this.checkMicrophonePermissions();
     }
 
-    async setupEventListeners() {
-        // Record button click handler
-        this.recordButton.addEventListener('click', () => this.toggleRecording());
+    initializeEventListeners() {
+        this.micButton.addEventListener('click', () => this.toggleRecording());
+    }
 
-        // Send button click handler
-        this.sendButton.addEventListener('click', () => this.handleUserInput());
-
-        // Enter key handler
-        this.userInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.handleUserInput();
+    async checkMicrophonePermissions() {
+        try {
+            // Check if we're in a secure context (HTTPS or localhost)
+            if (!window.isSecureContext) {
+                this.status.textContent = 'Microphone access requires HTTPS';
+                this.micButton.disabled = true;
+                return;
             }
-        });
+
+            // Check if the browser supports getUserMedia
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                this.status.textContent = 'Your browser does not support microphone access';
+                this.micButton.disabled = true;
+                return;
+            }
+
+            // Check if we already have microphone permission
+            const permissionResult = await navigator.permissions.query({ name: 'microphone' });
+            if (permissionResult.state === 'denied') {
+                this.status.textContent = 'Microphone access was denied. Please enable it in your browser settings.';
+                this.micButton.disabled = true;
+            } else {
+                this.status.textContent = 'Click the microphone to start';
+                this.micButton.disabled = false;
+            }
+        } catch (error) {
+            console.error('Error checking microphone permissions:', error);
+            this.status.textContent = 'Error checking microphone permissions';
+            this.micButton.disabled = true;
+        }
+    }
+
+    async toggleRecording() {
+        if (!this.isRecording) {
+            await this.startRecording();
+        } else {
+            await this.stopRecording();
+        }
     }
 
     async startRecording() {
@@ -65,29 +95,65 @@ class ChatApp {
 
             this.mediaRecorder.start();
             this.isRecording = true;
-            this.recordButton.classList.add('recording');
-            this.status.textContent = 'Recording...';
+            this.micButton.classList.add('active');
+            this.status.textContent = 'Listening...';
+            
+            this.startSilenceDetection(stream);
+
         } catch (error) {
             console.error('Error accessing microphone:', error);
-            this.status.textContent = 'Error: Could not access microphone. Please check permissions.';
+            if (error.name === 'NotAllowedError') {
+                this.status.textContent = 'Microphone access denied. Please allow access in your browser settings.';
+            } else {
+                this.status.textContent = 'Error accessing microphone';
+            }
+            this.micButton.disabled = true;
+            // Re-enable the button after checking permissions again
+            await this.checkMicrophonePermissions();
         }
     }
 
-    stopRecording() {
+    async stopRecording() {
         if (this.mediaRecorder && this.isRecording) {
             this.mediaRecorder.stop();
             this.isRecording = false;
-            this.recordButton.classList.remove('recording');
-            this.status.textContent = 'Processing audio...';
+            this.micButton.classList.remove('active');
+            this.status.textContent = 'Processing...';
         }
     }
 
-    toggleRecording() {
-        if (this.isRecording) {
-            this.stopRecording();
-        } else {
-            this.startRecording();
-        }
+    startSilenceDetection(stream) {
+        const audioContext = new AudioContext();
+        const source = audioContext.createMediaStreamSource(stream);
+        const analyzer = audioContext.createAnalyser();
+        analyzer.fftSize = 2048;
+        source.connect(analyzer);
+
+        const bufferLength = analyzer.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        
+        let silenceStart = null;
+
+        const checkSilence = () => {
+            if (!this.isRecording) return;
+
+            analyzer.getByteFrequencyData(dataArray);
+            const average = dataArray.reduce((a, b) => a + b) / bufferLength;
+
+            if (average < 10) {
+                if (!silenceStart) silenceStart = Date.now();
+                else if (Date.now() - silenceStart > this.SILENCE_THRESHOLD) {
+                    this.stopRecording();
+                    return;
+                }
+            } else {
+                silenceStart = null;
+            }
+
+            requestAnimationFrame(checkSilence);
+        };
+
+        checkSilence();
     }
 
     async processAudio(audioBlob) {
@@ -96,12 +162,20 @@ class ChatApp {
             const wavBlob = await this.convertToWAV(audioBlob);
             const transcription = await this.getTranscription(wavBlob);
             if (transcription) {
-                this.userInput.value = transcription;
-                await this.handleUserInput();
+                this.addMessage(transcription, 'user');
+                const aiResponse = await this.getAIResponse(transcription);
+                if (aiResponse) {
+                    const audioUrl = await this.textToSpeech(aiResponse);
+                    if (audioUrl) {
+                        const audio = new Audio(audioUrl);
+                        await audio.play();
+                    }
+                }
             }
+            this.status.textContent = 'Click the microphone to start';
         } catch (error) {
             console.error('Error processing audio:', error);
-            this.status.textContent = 'Error processing audio. Please try typing instead.';
+            this.status.textContent = 'Error processing audio. Please try again.';
         }
     }
 
@@ -225,33 +299,12 @@ class ChatApp {
         }
     }
 
-    async handleUserInput() {
-        const userMessage = this.userInput.value.trim();
-        if (!userMessage) return;
-
-        this.userInput.value = '';
-        this.addMessage(userMessage, 'user');
-
-        try {
-            const aiResponse = await this.getAIResponse(userMessage);
-            if (aiResponse) {
-                const audioUrl = await this.textToSpeech(aiResponse);
-                if (audioUrl) {
-                    const audio = new Audio(audioUrl);
-                    audio.play();
-                }
-            }
-        } catch (error) {
-            console.error('Error in conversation:', error);
-        }
-    }
-
-    addMessage(message, role) {
+    addMessage(text, sender) {
         const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${role}`;
-        messageDiv.textContent = message;
-        this.chatMessages.appendChild(messageDiv);
-        this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+        messageDiv.classList.add('message', sender);
+        messageDiv.textContent = text;
+        this.messagesContainer.appendChild(messageDiv);
+        this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
     }
 
     async getAIResponse(userMessage) {
@@ -362,5 +415,5 @@ class ChatApp {
 
 // Initialize the app
 document.addEventListener('DOMContentLoaded', () => {
-    new ChatApp();
+    new EmiliaAI();
 });

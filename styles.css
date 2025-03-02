@@ -1,51 +1,66 @@
 :root {
-    --primary-color: #B24C2D;
-    --user-message-bg: #FFE4D6;
-    --assistant-message-bg: #FFFFFF;
-    --text-color: #333333;
+    --background-color: #000000;
+    --primary-color: #4A5568;
+    --text-color: #FFFFFF;
+    --user-message-bg: #2C5282;
+    --assistant-message-bg: #2D3748;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
 body {
-    background-color: var(--primary-color);
-    color: white;
-    font-family: 'Helvetica Neue', sans-serif;
-    margin: 0;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-}
-
-.container {
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
-    color: white;
+    background-color: var(--background-color);
+    color: var(--text-color);
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 }
 
-.chat-interface {
+.container {
     display: flex;
     flex-direction: column;
-    height: 100%;
-    max-width: 800px;
+    height: 100vh;
+    max-width: 1200px;
     margin: 0 auto;
     width: 100%;
     padding: 20px;
+    box-sizing: border-box;
 }
 
-.animation-container {
-    width: 100%;
-    height: 200px;
+.header {
+    text-align: center;
+    padding: 20px 0;
+}
+
+h1 {
+    font-size: clamp(20px, 4vw, 24px);
+    font-weight: normal;
+    margin-bottom: 10px;
+}
+
+.os {
+    font-size: clamp(32px, 8vw, 48px);
+    font-weight: normal;
+    margin-bottom: 30px;
+}
+
+.infinity-container {
+    position: relative;
+    width: min(90vw, 400px);
+    height: min(90vw, 400px);
+    overflow: visible;
     display: flex;
     justify-content: center;
     align-items: center;
+    margin: 0 auto;
 }
 
-.animation-container svg {
-    width: 100%;
-    height: 100%;
-    max-width: 400px;
+.infinity {
+    stroke: white;
+    stroke-width: clamp(2px, 0.5vw, 4px);
+    fill: none;
 }
 
 .dot {
@@ -71,12 +86,14 @@ body {
 .chat-container {
     flex-grow: 1;
     background-color: rgba(255, 255, 255, 0.1);
-    border-radius: 15px;
-    padding: 20px;
+    flex-direction: column;
+    border-radius: 20px;
+    padding: clamp(10px, 2vw, 20px);
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: clamp(10px, 2vw, 20px);
     backdrop-filter: blur(10px);
+    margin-top: clamp(20px, 4vw, 40px);
 }
 
 .messages {
@@ -84,119 +101,90 @@ body {
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding: 10px;
+    gap: clamp(8px, 1.5vw, 16px);
+    padding: clamp(10px, 2vw, 20px);
 }
 
 .message {
-    padding: 10px 15px;
-    border-radius: 15px;
-    max-width: 80%;
-    word-wrap: break-word;
-}
-
-.message.user {
-    background-color: #2c5282;
-    align-self: flex-end;
+    max-width: 85%;
+    padding: clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 16px);
+    border-radius: 12px;
+    margin: 4px 0;
+    font-size: clamp(14px, 2vw, 16px);
 }
 
 .message.assistant {
-    background-color: #2d3748;
     align-self: flex-start;
+    background-color: var(--assistant-message-bg);
+    color: var(--text-color);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.message.user {
+    align-self: flex-end;
+    background-color: var(--user-message-bg);
+    color: var(--text-color);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .input-container {
     display: flex;
-    gap: 10px;
-    padding: 10px;
-    background-color: rgba(255, 255, 255, 0.05);
-    border-radius: 10px;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(8px, 1.5vw, 16px);
+    padding: clamp(10px, 2vw, 20px);
 }
 
-.record-button {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
+.mic-button {
+    background-color: white;
     border: none;
-    background-color: #2c5282;
-    cursor: pointer;
+    border-radius: 50%;
+    width: clamp(48px, 8vw, 60px);
+    height: clamp(48px, 8vw, 60px);
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.3s ease;
-}
-
-.record-button:hover {
-    background-color: #3182ce;
-}
-
-.record-button.recording {
-    background-color: #e53e3e;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-    100% { transform: scale(1); }
-}
-
-.record-icon {
-    width: 16px;
-    height: 16px;
-    background-color: white;
-    border-radius: 50%;
-}
-
-#userInput {
-    flex-grow: 1;
-    padding: 10px 15px;
-    border: none;
-    border-radius: 5px;
-    background-color: rgba(255, 255, 255, 0.1);
-    color: white;
-    font-size: 16px;
-}
-
-#userInput::placeholder {
-    color: rgba(255, 255, 255, 0.5);
-}
-
-#sendButton {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 5px;
-    background-color: #2c5282;
-    color: white;
     cursor: pointer;
-    transition: background-color 0.3s ease;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-#sendButton:hover {
-    background-color: #3182ce;
+.mic-button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.mic-button.active {
+    background-color: #ff4444;
+}
+
+.mic-button svg {
+    color: var(--primary-color);
+    width: clamp(20px, 3vw, 24px);
+    height: clamp(20px, 3vw, 24px);
 }
 
 .status {
-    text-align: center;
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 14px;
-    min-height: 20px;
+    color: white;
+    font-size: clamp(12px, 2vw, 14px);
+    opacity: 0.8;
 }
 
-@media (max-width: 768px) {
-    .chat-interface {
+/* Media queries for better mobile support */
+@media (max-width: 480px) {
+    .container {
         padding: 10px;
     }
 
-    .animation-container {
-        height: 150px;
+    .infinity-container {
+        margin-bottom: 20px;
+    }
+
+    .chat-container {
+        margin-top: 10px;
     }
 
     .message {
         max-width: 90%;
-    }
-
-    #sendButton {
-        padding: 10px;
     }
 }
