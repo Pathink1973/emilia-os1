@@ -16,10 +16,43 @@ class EmiliaAI {
         }];
 
         this.initializeEventListeners();
+        this.checkMicrophonePermissions();
     }
 
     initializeEventListeners() {
         this.micButton.addEventListener('click', () => this.toggleRecording());
+    }
+
+    async checkMicrophonePermissions() {
+        try {
+            // Check if we're in a secure context (HTTPS or localhost)
+            if (!window.isSecureContext) {
+                this.status.textContent = 'Microphone access requires HTTPS';
+                this.micButton.disabled = true;
+                return;
+            }
+
+            // Check if the browser supports getUserMedia
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                this.status.textContent = 'Your browser does not support microphone access';
+                this.micButton.disabled = true;
+                return;
+            }
+
+            // Check if we already have microphone permission
+            const permissionResult = await navigator.permissions.query({ name: 'microphone' });
+            if (permissionResult.state === 'denied') {
+                this.status.textContent = 'Microphone access was denied. Please enable it in your browser settings.';
+                this.micButton.disabled = true;
+            } else {
+                this.status.textContent = 'Click the microphone to start';
+                this.micButton.disabled = false;
+            }
+        } catch (error) {
+            console.error('Error checking microphone permissions:', error);
+            this.status.textContent = 'Error checking microphone permissions';
+            this.micButton.disabled = true;
+        }
     }
 
     async toggleRecording() {
@@ -54,7 +87,14 @@ class EmiliaAI {
 
         } catch (error) {
             console.error('Error accessing microphone:', error);
-            this.status.textContent = 'Error accessing microphone';
+            if (error.name === 'NotAllowedError') {
+                this.status.textContent = 'Microphone access denied. Please allow access in your browser settings.';
+            } else {
+                this.status.textContent = 'Error accessing microphone';
+            }
+            this.micButton.disabled = true;
+            // Re-enable the button after checking permissions again
+            await this.checkMicrophonePermissions();
         }
     }
 
