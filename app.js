@@ -1,3 +1,5 @@
+import config from './config.js';
+
 class ChatApp {
     constructor() {
         this.recordButton = document.getElementById('recordButton');
