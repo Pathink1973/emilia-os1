@@ -68,12 +68,6 @@ h1 {
     opacity: 0.8;
     transform-origin: center;
     transform-box: fill-box;
-    cursor: pointer;
-    transition: opacity 0.3s ease;
-}
-
-.dot:hover {
-    opacity: 1;
 }
 
 .dot {
@@ -84,6 +78,10 @@ h1 {
 @keyframes moveAlong {
     0% { offset-distance: 0%; }
     100% { offset-distance: 100%; }
+}
+
+.dot:hover {
+    opacity: 1;
 }
 
 .chat-container {
