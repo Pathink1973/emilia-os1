@@ -166,74 +166,122 @@ class EmiliaAI {
     }
 
     async getTranscription(audioBlob) {
-        const formData = new FormData();
-        formData.append('file', audioBlob, 'audio.wav');
-        formData.append('model', 'whisper-1');
+        try {
+            if (!config.OPENAI_API_KEY) {
+                throw new Error('OpenAI API Key is not configured');
+            }
 
-        const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${config.OPENAI_API_KEY}`
-            },
-            body: formData
-        });
+            const formData = new FormData();
+            formData.append('file', audioBlob, 'audio.wav');
+            formData.append('model', 'whisper-1');
 
-        const data = await response.json();
-        return data.text;
+            const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${config.OPENAI_API_KEY}`
+                },
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            if (!data.text) {
+                throw new Error('No transcription received from OpenAI');
+            }
+            return data.text;
+        } catch (error) {
+            console.error('Transcription error:', error);
+            this.status.textContent = 'Error: Could not transcribe audio. Please check API keys.';
+            throw error;
+        }
     }
 
     async getAIResponse(userMessage) {
-        this.conversationHistory.push({
-            role: 'user',
-            content: userMessage
-        });
+        try {
+            if (!config.OPENAI_API_KEY) {
+                throw new Error('OpenAI API Key is not configured');
+            }
 
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${config.OPENAI_API_KEY}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'gpt-4',
-                messages: this.conversationHistory,
-                temperature: 0.7,
-                max_tokens: 150
-            })
-        });
+            this.conversationHistory.push({
+                role: 'user',
+                content: userMessage
+            });
 
-        const data = await response.json();
-        const aiMessage = data.choices[0].message.content;
-        
-        this.conversationHistory.push({
-            role: 'assistant',
-            content: aiMessage
-        });
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${config.OPENAI_API_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: 'gpt-4',
+                    messages: this.conversationHistory,
+                    temperature: 0.7,
+                    max_tokens: 150
+                })
+            });
 
-        this.addMessage(aiMessage, 'assistant');
-        return aiMessage;
+            if (!response.ok) {
+                throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+                throw new Error('Invalid response from OpenAI');
+            }
+
+            const aiMessage = data.choices[0].message.content;
+            this.conversationHistory.push({
+                role: 'assistant',
+                content: aiMessage
+            });
+
+            this.addMessage(aiMessage, 'assistant');
+            return aiMessage;
+        } catch (error) {
+            console.error('AI Response error:', error);
+            this.status.textContent = 'Error: Could not get AI response. Please check API keys.';
+            throw error;
+        }
     }
 
     async textToSpeech(text) {
-        const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${config.ELEVEN_LABS_VOICE_ID}`, {
-            method: 'POST',
-            headers: {
-                'Accept': 'audio/mpeg',
-                'xi-api-key': config.ELEVEN_LABS_API_KEY,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                text: text,
-                model_id: 'eleven_monolingual_v1',
-                voice_settings: {
-                    stability: 0.5,
-                    similarity_boost: 0.5
-                }
-            })
-        });
+        try {
+            if (!config.ELEVEN_LABS_API_KEY || !config.ELEVEN_LABS_VOICE_ID) {
+                throw new Error('Eleven Labs credentials are not configured');
+            }
 
-        const audioBlob = await response.blob();
-        return URL.createObjectURL(audioBlob);
+            const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${config.ELEVEN_LABS_VOICE_ID}`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'audio/mpeg',
+                    'xi-api-key': config.ELEVEN_LABS_API_KEY,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    text: text,
+                    model_id: 'eleven_monolingual_v1',
+                    voice_settings: {
+                        stability: 0.5,
+                        similarity_boost: 0.5
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Eleven Labs API error: ${response.status} ${response.statusText}`);
+            }
+
+            const audioBlob = await response.blob();
+            return URL.createObjectURL(audioBlob);
+        } catch (error) {
+            console.error('Text-to-speech error:', error);
+            this.status.textContent = 'Error: Could not convert text to speech. Please check API keys.';
+            throw error;
+        }
     }
 
     async playAudioResponse(audioUrl) {
