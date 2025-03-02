@@ -16,94 +16,36 @@ class EmiliaAI {
         }];
 
         this.initializeEventListeners();
-        this.checkMobilePermissions();
-    }
-
-    async checkMobilePermissions() {
-        try {
-            // Check if we're on iOS
-            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-            
-            if (isIOS) {
-                // On iOS, we need to request permission when the user interacts with the page
-                document.addEventListener('touchstart', async () => {
-                    try {
-                        await navigator.mediaDevices.getUserMedia({ audio: true });
-                    } catch (err) {
-                        console.log('Audio permission not granted');
-                    }
-                }, { once: true });
-            }
-        } catch (error) {
-            console.error('Error checking permissions:', error);
-        }
     }
 
     initializeEventListeners() {
-        // Handle both click and touch events
-        const startEvents = ['click', 'touchstart'];
-        const endEvents = ['click', 'touchend'];
+        this.micButton.addEventListener('click', () => this.toggleRecording());
+    }
 
-        startEvents.forEach(eventType => {
-            this.micButton.addEventListener(eventType, (e) => {
-                e.preventDefault();
-                if (!this.isRecording) {
-                    this.startRecording();
-                }
-            });
-        });
-
-        endEvents.forEach(eventType => {
-            this.micButton.addEventListener(eventType, (e) => {
-                e.preventDefault();
-                if (this.isRecording) {
-                    this.stopRecording();
-                }
-            });
-        });
-
-        // Prevent scrolling when touching the mic button
-        this.micButton.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-        });
-
-        // Handle page visibility changes
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden && this.isRecording) {
-                this.stopRecording();
-            }
-        });
+    async toggleRecording() {
+        if (!this.isRecording) {
+            await this.startRecording();
+        } else {
+            await this.stopRecording();
+        }
     }
 
     async startRecording() {
         try {
-            const constraints = {
-                audio: {
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    autoGainControl: true
-                }
-            };
-
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
-            this.mediaRecorder = new MediaRecorder(stream, {
-                mimeType: 'audio/webm;codecs=opus'
-            });
-            
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            this.mediaRecorder = new MediaRecorder(stream);
             this.audioChunks = [];
 
             this.mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) {
-                    this.audioChunks.push(event.data);
-                }
+                this.audioChunks.push(event.data);
             };
 
             this.mediaRecorder.onstop = async () => {
-                const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm;codecs=opus' });
+                const audioBlob = new Blob(this.audioChunks, { type: 'audio/wav' });
                 await this.processAudio(audioBlob);
             };
 
-            this.mediaRecorder.start(100); // Collect data every 100ms
+            this.mediaRecorder.start();
             this.isRecording = true;
             this.micButton.classList.add('active');
             this.status.textContent = 'Listening...';
@@ -113,12 +55,6 @@ class EmiliaAI {
         } catch (error) {
             console.error('Error accessing microphone:', error);
             this.status.textContent = 'Error accessing microphone';
-            
-            if (error.name === 'NotAllowedError') {
-                this.status.textContent = 'Please allow microphone access';
-            } else if (error.name === 'NotFoundError') {
-                this.status.textContent = 'No microphone found';
-            }
         }
     }
 
@@ -134,11 +70,6 @@ class EmiliaAI {
     }
 
     startSilenceDetection(stream) {
-        // Only start silence detection on desktop
-        if (/Android|webOS|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-            return;
-        }
-
         const audioContext = new AudioContext();
         const source = audioContext.createMediaStreamSource(stream);
         const analyzer = audioContext.createAnalyser();
