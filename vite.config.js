@@ -1,4 +1,6 @@
-export default {
+import { defineConfig } from 'vite';
+
+export default defineConfig({
   envPrefix: 'VITE_',
   build: {
     outDir: 'dist',
@@ -7,5 +9,9 @@ export default {
         manualChunks: undefined
       }
     }
+  },
+  esbuild: {
+    jsxFactory: 'h',
+    jsxFragment: 'Fragment'
   }
-}
+});

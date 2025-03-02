@@ -5,87 +5,124 @@
     --text-color: #333333;
 }
 
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    overscroll-behavior: none;
+}
+
 body {
     background-color: var(--primary-color);
     color: white;
-    font-family: 'Helvetica Neue', sans-serif;
-    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    position: fixed;
+    overflow: hidden;
 }
 
 .container {
     display: flex;
     flex-direction: column;
     height: 100vh;
-    max-width: 1200px;
+    max-width: 800px;
     margin: 0 auto;
     width: 100%;
-    padding: 20px;
-    box-sizing: border-box;
+    padding: 16px;
 }
 
 .header {
     text-align: center;
-    padding: 20px 0;
+    padding: 24px 0;
+    margin-bottom: 16px;
 }
 
 h1 {
-    font-size: 24px;
-    font-weight: normal;
-    margin-bottom: 10px;
+    font-size: 32px;
+    font-weight: 500;
+    margin: 0 0 8px 0;
+    letter-spacing: -0.5px;
+}
+
+.os-container {
+    text-align: center;
+    margin-top: -10px;
 }
 
 .os {
-    font-size: 48px;
-    font-weight: normal;
-    margin-bottom: 30px;
+    font-size: 56px;
+    font-weight: 300;
+    margin: 0;
+    opacity: 0.9;
 }
 
-.infinity-container {
+.os sup {
+    font-size: 0.5em;
+    vertical-align: super;
     position: relative;
-    width: 400px;
-    height: 400px;
-    overflow: visible;
+    top: -0.15em;
+}
+
+.os-subtitle {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 2px;
+    opacity: 0.8;
+    margin-top: -5px;
+    text-transform: uppercase;
+}
+
+.title-container {
     display: flex;
-    justify-content: center;
     align-items: center;
-    margin: 0 auto;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 8px;
 }
 
-.infinity {
-    stroke: white;
-    stroke-width: 4;
-    fill: none;
+.wave-container {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: 32px;
+    padding: 0 8px;
 }
 
-.dot {
-    fill: white;
-    filter: blur(4px);
-    r: 20;
-    animation: moveAlong 3s linear infinite;
+.wave-bar {
+    width: 3px;
+    height: 24px;
+    background-color: white;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2);
+    animation: waveAnimation 2s infinite;
 }
 
-@keyframes moveAlong {
-    0% { offset-distance: 0%; }
-    100% { offset-distance: 100%; }
-}
-
-.dot {
-    offset-path: path('M200,50 A150,150 0 1,1 199.99,50');
-    offset-rotate: auto;
+@keyframes waveAnimation {
+    0% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0); }
 }
 
 .chat-container {
     flex-grow: 1;
-    background-color: rgba(255, 255, 255, 0.1);
-    border-radius: 20px;
+    background-color: rgba(255, 255, 255, 0.12);
+    border-radius: 24px;
     padding: 20px;
     display: flex;
     flex-direction: column;
     gap: 20px;
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    margin-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .messages {
@@ -94,67 +131,154 @@ h1 {
     display: flex;
     flex-direction: column;
     gap: 16px;
-    padding: 20px;
+    padding: 16px;
+    -webkit-overflow-scrolling: touch;
 }
 
 .message {
-    max-width: 80%;
-    padding: 12px 16px;
-    border-radius: 12px;
+    max-width: 85%;
+    padding: 14px 18px;
+    border-radius: 18px;
     margin: 4px 0;
+    word-wrap: break-word;
+    font-size: 16px;
+    line-height: 1.5;
+    letter-spacing: -0.2px;
 }
 
 .message.assistant {
     align-self: flex-start;
     background-color: var(--assistant-message-bg);
     color: var(--text-color);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border-bottom-left-radius: 6px;
 }
 
 .message.user {
     align-self: flex-end;
     background-color: var(--user-message-bg);
     color: var(--text-color);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border-bottom-right-radius: 6px;
 }
 
 .input-container {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 16px;
+    gap: 20px;
     padding: 20px;
+    position: relative;
+    margin-bottom: 40px;
 }
 
 .mic-button {
     background-color: white;
     border: none;
     border-radius: 50%;
-    width: 60px;
-    height: 60px;
+    width: 72px;
+    height: 72px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
-.mic-button:hover {
-    transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+.mic-button:active {
+    transform: scale(0.96);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
 .mic-button.active {
     background-color: #ff4444;
+    transform: scale(1.05);
 }
 
 .mic-button svg {
     color: var(--primary-color);
+    width: 36px;
+    height: 36px;
 }
 
 .status {
     color: white;
-    font-size: 14px;
-    opacity: 0.8;
+    font-size: 15px;
+    font-weight: 500;
+    opacity: 0.9;
+    position: absolute;
+    bottom: -35px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+/* Desktop enhancements */
+@media (min-width: 768px) {
+    .container {
+        padding: 24px;
+    }
+
+    h1 {
+        font-size: 36px;
+    }
+
+    .os {
+        font-size: 64px;
+    }
+    
+    .os sup {
+        font-size: 0.45em;
+    }
+
+    .os-subtitle {
+        font-size: 12px;
+        letter-spacing: 3px;
+        margin-top: -8px;
+    }
+
+    .chat-container {
+        padding: 24px;
+        border-radius: 28px;
+    }
+
+    .message {
+        font-size: 17px;
+        padding: 16px 20px;
+    }
+
+    .mic-button {
+        width: 80px;
+        height: 80px;
+    }
+
+    .mic-button svg {
+        width: 40px;
+        height: 40px;
+    }
+
+    .wave-container {
+        height: 40px;
+    }
+
+    .wave-bar {
+        width: 4px;
+        height: 32px;
+    }
+}
+
+/* iOS-specific styles */
+@supports (-webkit-touch-callout: none) {
+    .chat-container {
+        padding-bottom: 30px;
+    }
 }
