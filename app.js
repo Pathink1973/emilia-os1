@@ -168,6 +168,7 @@ class EmiliaAI {
     async getTranscription(audioBlob) {
         try {
             if (!config.OPENAI_API_KEY) {
+                this.status.textContent = 'Error: OpenAI API Key is not configured';
                 throw new Error('OpenAI API Key is not configured');
             }
 
@@ -184,17 +185,26 @@ class EmiliaAI {
             });
 
             if (!response.ok) {
-                throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+                const errorData = await response.json().catch(() => ({}));
+                const errorMessage = errorData.error?.message || response.statusText;
+                this.status.textContent = `Error: ${errorMessage}`;
+                throw new Error(`OpenAI API error: ${response.status} - ${errorMessage}`);
             }
 
             const data = await response.json();
-            if (!data.text) {
+            
+            if (!data || !data.text) {
+                this.status.textContent = 'Error: No transcription received';
                 throw new Error('No transcription received from OpenAI');
             }
+
+            this.status.textContent = 'Transcription received, generating response...';
             return data.text;
         } catch (error) {
             console.error('Transcription error:', error);
-            this.status.textContent = 'Error: Could not transcribe audio. Please check API keys.';
+            if (!this.status.textContent.startsWith('Error:')) {
+                this.status.textContent = 'Error: Failed to transcribe audio. Please try again.';
+            }
             throw error;
         }
     }
@@ -202,6 +212,7 @@ class EmiliaAI {
     async getAIResponse(userMessage) {
         try {
             if (!config.OPENAI_API_KEY) {
+                this.status.textContent = 'Error: OpenAI API Key is not configured';
                 throw new Error('OpenAI API Key is not configured');
             }
 
@@ -225,11 +236,16 @@ class EmiliaAI {
             });
 
             if (!response.ok) {
-                throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+                const errorData = await response.json().catch(() => ({}));
+                const errorMessage = errorData.error?.message || response.statusText;
+                this.status.textContent = `Error: ${errorMessage}`;
+                throw new Error(`OpenAI API error: ${response.status} - ${errorMessage}`);
             }
 
             const data = await response.json();
+            
             if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+                this.status.textContent = 'Error: Invalid response from AI';
                 throw new Error('Invalid response from OpenAI');
             }
 
@@ -240,10 +256,13 @@ class EmiliaAI {
             });
 
             this.addMessage(aiMessage, 'assistant');
+            this.status.textContent = 'Converting response to speech...';
             return aiMessage;
         } catch (error) {
             console.error('AI Response error:', error);
-            this.status.textContent = 'Error: Could not get AI response. Please check API keys.';
+            if (!this.status.textContent.startsWith('Error:')) {
+                this.status.textContent = 'Error: Failed to get AI response. Please try again.';
+            }
             throw error;
         }
     }
@@ -251,6 +270,7 @@ class EmiliaAI {
     async textToSpeech(text) {
         try {
             if (!config.ELEVEN_LABS_API_KEY || !config.ELEVEN_LABS_VOICE_ID) {
+                this.status.textContent = 'Error: Eleven Labs credentials are not configured';
                 throw new Error('Eleven Labs credentials are not configured');
             }
 
@@ -272,14 +292,24 @@ class EmiliaAI {
             });
 
             if (!response.ok) {
-                throw new Error(`Eleven Labs API error: ${response.status} ${response.statusText}`);
+                const errorMessage = await response.text();
+                this.status.textContent = `Error: ${errorMessage}`;
+                throw new Error(`Eleven Labs API error: ${response.status} - ${errorMessage}`);
             }
 
             const audioBlob = await response.blob();
+            if (!audioBlob || audioBlob.size === 0) {
+                this.status.textContent = 'Error: No audio received';
+                throw new Error('No audio received from Eleven Labs');
+            }
+
+            this.status.textContent = 'Playing audio response...';
             return URL.createObjectURL(audioBlob);
         } catch (error) {
             console.error('Text-to-speech error:', error);
-            this.status.textContent = 'Error: Could not convert text to speech. Please check API keys.';
+            if (!this.status.textContent.startsWith('Error:')) {
+                this.status.textContent = 'Error: Failed to convert text to speech. Please try again.';
+            }
             throw error;
         }
     }
