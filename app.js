@@ -15,8 +15,21 @@ class EmiliaAI {
             content: config.SYSTEM_PROMPT
         }];
 
+        // Check for HTTPS
+        this.checkHttps();
         this.initializeEventListeners();
         this.checkMobilePermissions();
+    }
+
+    checkHttps() {
+        if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+            this.status.textContent = 'Please use HTTPS for microphone access';
+            this.micButton.disabled = true;
+            // Redirect to HTTPS if on Netlify
+            if (window.location.hostname.includes('netlify.app')) {
+                window.location.href = 'https://' + window.location.hostname + window.location.pathname;
+            }
+        }
     }
 
     async checkMobilePermissions() {
@@ -28,15 +41,42 @@ class EmiliaAI {
                 // On iOS, we need to request permission when the user interacts with the page
                 document.addEventListener('touchstart', async () => {
                     try {
-                        await navigator.mediaDevices.getUserMedia({ audio: true });
+                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        stream.getTracks().forEach(track => track.stop());
                     } catch (err) {
                         console.log('Audio permission not granted');
+                        this.status.textContent = 'Please allow microphone access';
                     }
                 }, { once: true });
             }
+
+            // Check if microphone is available
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    stream.getTracks().forEach(track => track.stop());
+                } catch (err) {
+                    this.handlePermissionError(err);
+                }
+            } else {
+                this.status.textContent = 'Microphone access not supported in this browser';
+                this.micButton.disabled = true;
+            }
         } catch (error) {
-            console.error('Error checking permissions:', error);
+            this.handlePermissionError(error);
         }
+    }
+
+    handlePermissionError(error) {
+        console.error('Permission error:', error);
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+            this.status.textContent = 'Please allow microphone access in your browser settings';
+        } else if (error.name === 'NotFoundError') {
+            this.status.textContent = 'No microphone found';
+        } else {
+            this.status.textContent = 'Error accessing microphone';
+        }
+        this.micButton.disabled = true;
     }
 
     initializeEventListeners() {
@@ -45,10 +85,15 @@ class EmiliaAI {
         const endEvents = ['click', 'touchend'];
 
         startEvents.forEach(eventType => {
-            this.micButton.addEventListener(eventType, (e) => {
+            this.micButton.addEventListener(eventType, async (e) => {
                 e.preventDefault();
                 if (!this.isRecording) {
-                    this.startRecording();
+                    try {
+                        await this.requestMicrophoneAccess();
+                        await this.startRecording();
+                    } catch (error) {
+                        this.handlePermissionError(error);
+                    }
                 }
             });
         });
@@ -73,6 +118,22 @@ class EmiliaAI {
                 this.stopRecording();
             }
         });
+    }
+
+    async requestMicrophoneAccess() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true
+                }
+            });
+            stream.getTracks().forEach(track => track.stop());
+            return true;
+        } catch (error) {
+            throw error;
+        }
     }
 
     async startRecording() {
