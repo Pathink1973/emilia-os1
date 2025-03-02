@@ -109,7 +109,7 @@ MIT License - feel free to use this project for your own purposes!
 
 ## 🤝 Support
 
-Need help? Open an issue or contact us at patriciobritodesign@gmail.com
+Need help? Open an issue or contact us at your-email@example.com
 
 ## 🌟 Credits
 

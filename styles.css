@@ -3,6 +3,7 @@
     --user-message-bg: #FFE4D6;
     --assistant-message-bg: #FFFFFF;
     --text-color: #333333;
+    --recording-color: #ff4444;
 }
 
 * {
@@ -130,6 +131,16 @@ h1 {
     word-wrap: break-word;
     font-size: 15px;
     line-height: 1.4;
+    opacity: 0;
+    transform: translateY(20px);
+    animation: messageAppear 0.3s ease forwards;
+}
+
+@keyframes messageAppear {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .message.assistant {
@@ -152,8 +163,7 @@ h1 {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 16px;
-    padding: 15px;
+    padding: 20px;
     position: relative;
 }
 
@@ -169,34 +179,64 @@ h1 {
     cursor: pointer;
     transition: all 0.3s ease;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    user-select: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.mic-icon {
+    position: relative;
+    z-index: 2;
+}
+
+.mic-wave {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--recording-color) 0%, transparent 70%);
+    opacity: 0;
+    transform: scale(0.5);
+    transition: all 0.3s ease;
+}
+
+.mic-button.active {
+    background-color: var(--recording-color);
+}
+
+.mic-button.active .mic-wave {
+    opacity: 0.3;
+    transform: scale(2);
+    animation: pulse 2s infinite;
+}
+
+.mic-button.active svg {
+    color: white;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(0.5);
+        opacity: 0.3;
+    }
+    50% {
+        transform: scale(2);
+        opacity: 0.2;
+    }
+    100% {
+        transform: scale(0.5);
+        opacity: 0.3;
+    }
 }
 
 .mic-button:active {
     transform: scale(0.95);
 }
 
-.mic-button.active {
-    background-color: #ff4444;
-}
-
 .mic-button svg {
     color: var(--primary-color);
     width: 32px;
     height: 32px;
-}
-
-.status {
-    color: white;
-    font-size: 14px;
-    opacity: 0.8;
-    position: absolute;
-    bottom: -25px;
-    left: 0;
-    right: 0;
-    text-align: center;
+    transition: color 0.3s ease;
 }
 
 /* iOS-specific styles */
