@@ -118,28 +118,37 @@ h1 {
     padding: 20px;
     display: flex;
     flex-direction: column;
-    gap: 20px;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     margin-bottom: env(safe-area-inset-bottom, 0px);
+    position: relative;
+    overflow: hidden;
 }
 
 .messages {
-    flex-grow: 1;
+    flex: 1;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
     gap: 16px;
     padding: 16px;
     -webkit-overflow-scrolling: touch;
+    margin-bottom: 120px; /* Increased from 100px to create more space */
+    scroll-behavior: smooth;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding-bottom: 40px; /* Additional padding at the bottom */
 }
 
 .message {
     max-width: 85%;
     padding: 14px 18px;
     border-radius: 18px;
-    margin: 4px 0;
+    margin: 6px 0; /* Increased margin from 4px to 6px */
     word-wrap: break-word;
     font-size: 16px;
     line-height: 1.5;
@@ -162,14 +171,37 @@ h1 {
     border-bottom-right-radius: 6px;
 }
 
+.message.status {
+    align-self: center;
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white;
+    font-size: 14px;
+    padding: 8px 16px;
+    border-radius: 12px;
+    margin: 8px 0;
+    box-shadow: none;
+    max-width: fit-content;
+}
+
 .input-container {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 20px;
-    padding: 20px;
-    position: relative;
-    margin-bottom: 40px;
+    padding: 30px 20px; /* Increased top/bottom padding from 20px to 30px */
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 0 0 24px 24px;
+    z-index: 10;
+}
+
+.status {
+    display: none;
 }
 
 .mic-button {
@@ -203,23 +235,6 @@ h1 {
     color: var(--primary-color);
     width: 36px;
     height: 36px;
-}
-
-.status {
-    color: white;
-    font-size: 15px;
-    font-weight: 500;
-    opacity: 0.9;
-    position: absolute;
-    bottom: -35px;
-    left: 0;
-    right: 0;
-    text-align: center;
-    padding: 10px;
-    background: rgba(0, 0, 0, 0.1);
-    border-radius: 12px;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
 }
 
 /* Desktop enhancements */

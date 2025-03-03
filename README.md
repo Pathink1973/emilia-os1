@@ -1,122 +1,49 @@
-# 🎙️ Emilia AI Assistant
+# Emilia Chat AI
 
-An elegant, voice-interactive AI assistant that combines the power of OpenAI's GPT-4 with Eleven Labs' natural voice synthesis. Emilia provides a seamless, conversational experience with both voice input and output.
+A voice-interactive AI chat application featuring real-time speech recognition, natural language processing, and voice responses.
 
-## ✨ Features
+## Features
 
-- 🎤 **Voice Interaction**: Natural voice input through your device's microphone
-- 🤖 **Advanced AI**: Powered by GPT-4 for intelligent, context-aware responses
-- 🗣️ **Natural Voice**: Lifelike voice responses using Eleven Labs' voice synthesis
-- 📱 **Mobile-First**: Optimized for both desktop and mobile devices
-- 🔒 **Secure**: Environment variables for API key protection
-- 💫 **Modern UI**: Clean, responsive interface with smooth animations
+- 🎤 Voice-based interaction
+- 🤖 AI-powered conversations using OpenAI's GPT
+- 🗣️ Text-to-speech for AI responses
+- 📝 Speech-to-text using Whisper API
+- 🌊 Interactive wave animation
+- 🔄 Automatic silence detection
+- 💬 Conversation history
 
-## 🚀 Quick Start
+## Tech Stack
 
-1. **Clone the Repository**
+- Frontend: Vanilla JavaScript
+- Build Tool: Vite
+- APIs: OpenAI (Whisper and ChatGPT)
+- Deployment: Netlify
+
+## Setup
+
+1. Clone the repository
+2. Copy `.env.example` to `.env` and add your OpenAI API key
+3. Install dependencies:
    ```bash
-   git clone https://github.com/yourusername/emilia-ai-assistant.git
-   cd emilia-ai-assistant
+   npm install
+   ```
+4. Run development server:
+   ```bash
+   npm run dev
    ```
 
-2. **Configure API Keys**
-   ```bash
-   cp config.example.js config.js
-   ```
-   Edit `config.js` with your API keys for local development
+## Build
 
-3. **Run Locally**
-   ```bash
-   python3 -m http.server 5178
-   ```
-
-4. **Open in Browser**
-   Visit `http://localhost:5178`
-
-## 🛠️ Technologies
-
-- **Frontend**:
-  - HTML5 & CSS3
-  - Vanilla JavaScript (ES6+)
-  - WebRTC for audio capture
-  - Web Audio API
-  
-- **AI & Voice**:
-  - OpenAI GPT-4
-  - OpenAI Whisper
-  - Eleven Labs Voice Synthesis
-
-## 🔑 Environment Setup
-
-### Local Development
-Create a `config.js` file with your API keys:
-```javascript
-const config = {
-    OPENAI_API_KEY: 'your-openai-key',
-    ELEVEN_LABS_API_KEY: 'your-eleven-labs-key',
-    // ... other config
-};
+To build for production:
+```bash
+npm run build
 ```
 
-### Production (Netlify)
-Set these environment variables in your Netlify dashboard:
-- `OPENAI_API_KEY`
-- `ELEVEN_LABS_API_KEY`
+## Environment Variables
 
-## 📱 Mobile Support
+Required environment variables in `.env`:
+- `OPENAI_API_KEY`: Your OpenAI API key
 
-Emilia works great on mobile devices with:
-- Touch-optimized interface
-- iOS & Android compatibility
-- Responsive design
-- PWA capabilities
+## License
 
-## 🚀 Deployment
-
-### Netlify Deployment Steps
-
-1. Push to GitHub
-2. Connect repository to Netlify
-3. Configure environment variables
-4. Deploy!
-
-## 🔒 Security Features
-
-- Environment variables for API keys
-- Secure headers configuration
-- HTTPS enforcement
-- Content Security Policy
-- XSS protection
-
-## 🎯 Usage Tips
-
-1. Click/tap the microphone to start recording
-2. Speak naturally to Emilia
-3. Release or wait for silence to process
-4. Listen to Emilia's voice response
-
-## 📝 License
-
-MIT License - feel free to use this project for your own purposes!
-
-## 👥 Contributing
-
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Open a Pull Request
-
-## 🤝 Support
-
-Need help? Open an issue or contact us at your-email@example.com
-
-## 🌟 Credits
-
-- Voice synthesis by [Eleven Labs](https://elevenlabs.io)
-- AI powered by [OpenAI](https://openai.com)
-- Created with ❤️ by Patrício Brito © 2025
-
----
-
-Made with ❤️ for the AI community
+MIT

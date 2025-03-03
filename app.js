@@ -21,6 +21,7 @@ class EmiliaAI {
             role: 'system',
             content: config.SYSTEM_PROMPT
         }];
+        this.lastStatusMessage = null;
 
         this.initializeEventListeners();
         this.checkMicrophonePermissions();
@@ -40,10 +41,10 @@ class EmiliaAI {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             stream.getTracks().forEach(track => track.stop());
-            this.status.textContent = 'Click the microphone to start';
+            this.updateStatus('Click the microphone to start');
         } catch (error) {
             console.error('Microphone permission error:', error);
-            this.status.textContent = 'Error: Microphone permission denied';
+            this.updateStatus('Error: Microphone permission denied');
         }
     }
 
@@ -60,7 +61,7 @@ class EmiliaAI {
             };
 
             if (navigator.mediaDevices.getUserMedia) {
-                this.status.textContent = 'Requesting microphone access...';
+                this.updateStatus('Requesting microphone access...');
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 
                 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -85,7 +86,7 @@ class EmiliaAI {
                 this.mediaRecorder.onstart = () => {
                     this.isRecording = true;
                     this.micButton.classList.add('active');
-                    this.status.textContent = 'Listening...';
+                    this.updateStatus('Listening...');
 
                     // Reset and start silence detection
                     if (this.silenceTimer) {
@@ -107,6 +108,7 @@ class EmiliaAI {
                     }
 
                     if (this.audioChunks.length > 0) {
+                        this.updateStatus('Processing audio...');
                         await this.processAudio(new Blob(this.audioChunks, { type: mimeType }));
                     }
                 };
@@ -115,7 +117,7 @@ class EmiliaAI {
             }
         } catch (error) {
             console.error('Recording error:', error);
-            this.status.textContent = 'Error: Could not start recording';
+            this.updateStatus('Error: Could not start recording');
         }
     }
 
@@ -124,12 +126,13 @@ class EmiliaAI {
             this.mediaRecorder.stop();
             this.isRecording = false;
             this.micButton.classList.remove('active');
-            this.status.textContent = 'Processing...';
+            this.updateStatus('Processing...');
         }
     }
 
     async processAudio(audioBlob) {
         try {
+            this.updateStatus('Converting speech to text...');
             // Convert audio to WAV format for Whisper API
             const formData = new FormData();
             formData.append('file', audioBlob, 'audio.webm');
@@ -147,27 +150,29 @@ class EmiliaAI {
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
                 const errorMessage = errorData.error?.message || response.statusText;
-                this.status.textContent = `Error: ${errorMessage}`;
+                this.updateStatus(`Error: ${errorMessage}`);
                 throw new Error(`Whisper API error: ${response.status} - ${errorMessage}`);
             }
 
             const data = await response.json();
             
             if (!data.text) {
-                this.status.textContent = 'Error: No speech detected';
+                this.updateStatus('Error: No speech detected');
                 throw new Error('No speech detected');
             }
 
             const userMessage = data.text.trim();
             this.addMessage(userMessage, 'user');
             
+            this.updateStatus('Emilia is thinking...');
             const aiMessage = await this.getAIResponse(userMessage);
+            this.updateStatus('');  // Clear status when response is received
             await this.textToSpeech(aiMessage);
 
         } catch (error) {
             console.error('Audio processing error:', error);
             if (!this.status.textContent.startsWith('Error:')) {
-                this.status.textContent = 'Error: Failed to process audio. Please try again.';
+                this.updateStatus('Error: Failed to process audio. Please try again.');
             }
         }
     }
@@ -177,13 +182,29 @@ class EmiliaAI {
         messageDiv.className = `message ${role}`;
         messageDiv.textContent = text;
         this.messagesContainer.appendChild(messageDiv);
-        this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+        // Scroll to the new message with smooth animation
+        messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+
+    updateStatus(text) {
+        this.status.textContent = text;
+        // Also show status in messages container
+        if (this.lastStatusMessage) {
+            this.lastStatusMessage.remove();
+        }
+        const statusDiv = document.createElement('div');
+        statusDiv.className = 'message status';
+        statusDiv.textContent = text;
+        this.messagesContainer.appendChild(statusDiv);
+        this.lastStatusMessage = statusDiv;
+        // Scroll to the status message
+        statusDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
 
     async getAIResponse(userMessage) {
         try {
             if (!config.OPENAI_API_KEY) {
-                this.status.textContent = 'Error: OpenAI API Key is not configured';
+                this.updateStatus('Error: OpenAI API Key is not configured');
                 throw new Error('OpenAI API Key is not configured');
             }
 
@@ -191,8 +212,6 @@ class EmiliaAI {
                 role: 'user',
                 content: userMessage
             });
-
-            this.status.textContent = 'Emilia is thinking...';
 
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
@@ -211,14 +230,14 @@ class EmiliaAI {
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
                 const errorMessage = errorData.error?.message || response.statusText;
-                this.status.textContent = `Error: ${errorMessage}`;
+                this.updateStatus(`Error: ${errorMessage}`);
                 throw new Error(`OpenAI API error: ${response.status} - ${errorMessage}`);
             }
 
             const data = await response.json();
             
             if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-                this.status.textContent = 'Error: Invalid response from AI';
+                this.updateStatus('Error: Invalid response from AI');
                 throw new Error('Invalid response from OpenAI');
             }
 
@@ -229,12 +248,12 @@ class EmiliaAI {
             });
 
             this.addMessage(aiMessage, 'assistant');
-            this.status.textContent = 'Converting response to speech...';
+            this.updateStatus('Converting response to speech...');
             return aiMessage;
         } catch (error) {
             console.error('AI Response error:', error);
             if (!this.status.textContent.startsWith('Error:')) {
-                this.status.textContent = 'Error: Failed to get AI response. Please try again.';
+                this.updateStatus('Error: Failed to get AI response. Please try again.');
             }
             throw error;
         }
@@ -246,20 +265,19 @@ class EmiliaAI {
             if (audioUrl) {
                 const audio = new Audio(audioUrl);
                 audio.onended = () => {
-                    this.status.textContent = 'Click the microphone to start';
                 };
                 await audio.play();
                 return audioUrl;
             }
-            return null;
         } catch (error) {
+            console.error('Text to speech error:', error);
             throw error;
         }
     }
 
     async callElevenLabsAPI(text) {
         if (!config.ELEVEN_LABS_API_KEY || !config.ELEVEN_LABS_VOICE_ID) {
-            this.status.textContent = 'Error: Eleven Labs credentials are not configured';
+            this.updateStatus('Error: Eleven Labs credentials are not configured');
             throw new Error('Eleven Labs credentials are not configured');
         }
 
@@ -282,13 +300,13 @@ class EmiliaAI {
 
         if (!response.ok) {
             const errorMessage = await response.text();
-            this.status.textContent = `Error: ${errorMessage}`;
+            this.updateStatus(`Error: ${errorMessage}`);
             throw new Error(`Eleven Labs API error: ${response.status} - ${errorMessage}`);
         }
 
         const audioBlob = await response.blob();
         if (!audioBlob || audioBlob.size === 0) {
-            this.status.textContent = 'Error: No audio received';
+            this.updateStatus('Error: No audio received');
             throw new Error('No audio received from Eleven Labs');
         }
 
