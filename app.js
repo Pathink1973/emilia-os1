@@ -7,6 +7,24 @@ if (waveContainer) {
     new WaveAnimation(waveContainer);
 }
 
+// --- Audio unlock for mobile browsers ---
+let audioUnlocked = false;
+function unlockAudio() {
+    if (audioUnlocked) return;
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const source = ctx.createBufferSource();
+        source.buffer = ctx.createBuffer(1, 1, 22050);
+        source.connect(ctx.destination);
+        source.start(0);
+        audioUnlocked = true;
+        setTimeout(() => ctx.close(), 200);
+        console.log('[Audio] Unlocked audio context');
+    } catch (e) {
+        console.warn('[Audio] Unlock failed:', e);
+    }
+}
+
 class EmiliaAI {
     constructor() {
         this.micButton = document.getElementById('micButton');
@@ -28,7 +46,19 @@ class EmiliaAI {
     }
 
     initializeEventListeners() {
+        // Unlock audio on first user interaction (tap/click)
+        // Only unlock on first touch/click, do not repeat
+        const unlockOnce = () => {
+            unlockAudio();
+            window.removeEventListener('touchend', unlockOnce);
+            window.removeEventListener('click', unlockOnce);
+        };
+        window.addEventListener('touchend', unlockOnce);
+        window.addEventListener('click', unlockOnce);
+
         this.micButton.addEventListener('click', () => {
+            unlockAudio();
+            console.log('[Mic] Mic button clicked. isRecording:', this.isRecording);
             if (!this.isRecording) {
                 this.startRecording();
             } else {
@@ -62,6 +92,7 @@ class EmiliaAI {
 
             if (navigator.mediaDevices.getUserMedia) {
                 this.updateStatus('Requesting microphone access...');
+                console.log('[Mic] Requesting microphone access...');
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 
                 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -80,6 +111,7 @@ class EmiliaAI {
                 this.mediaRecorder.ondataavailable = (event) => {
                     if (event.data.size > 0) {
                         this.audioChunks.push(event.data);
+                        console.log('[Mic] Audio chunk received, size:', event.data.size);
                     }
                 };
 
@@ -87,6 +119,7 @@ class EmiliaAI {
                     this.isRecording = true;
                     this.micButton.classList.add('active');
                     this.updateStatus('Listening...');
+                    console.log('[Mic] Recording started.');
 
                     // Reset and start silence detection
                     if (this.silenceTimer) {
@@ -102,6 +135,7 @@ class EmiliaAI {
                 this.mediaRecorder.onstop = async () => {
                     const tracks = stream.getTracks();
                     tracks.forEach(track => track.stop());
+                    console.log('[Mic] Recording stopped. Chunks:', this.audioChunks.length);
                     
                     if (this.silenceTimer) {
                         clearTimeout(this.silenceTimer);
@@ -110,6 +144,9 @@ class EmiliaAI {
                     if (this.audioChunks.length > 0) {
                         this.updateStatus('Processing audio...');
                         await this.processAudio(new Blob(this.audioChunks, { type: mimeType }));
+                    } else {
+                        this.updateStatus('No audio detected. Try again.');
+                        console.warn('[Mic] No audio chunks were recorded.');
                     }
                 };
 
@@ -133,6 +170,7 @@ class EmiliaAI {
     async processAudio(audioBlob) {
         try {
             this.updateStatus('Converting speech to text...');
+            console.log('[Whisper] Sending audio to Whisper for transcription.');
             // Convert audio to WAV format for Whisper API
             const formData = new FormData();
             formData.append('file', audioBlob, 'audio.webm');
@@ -151,6 +189,7 @@ class EmiliaAI {
                 const errorData = await response.json().catch(() => ({}));
                 const errorMessage = errorData.error?.message || response.statusText;
                 this.updateStatus(`Error: ${errorMessage}`);
+                console.error('[Whisper] API error:', errorMessage);
                 throw new Error(`Whisper API error: ${response.status} - ${errorMessage}`);
             }
 
@@ -158,10 +197,12 @@ class EmiliaAI {
             
             if (!data.text) {
                 this.updateStatus('Error: No speech detected');
+                console.warn('[Whisper] No speech detected in audio.');
                 throw new Error('No speech detected');
             }
 
             const userMessage = data.text.trim();
+            console.log('[Whisper] Transcription result:', userMessage);
             this.addMessage(userMessage, 'user');
             
             this.updateStatus('Emilia is thinking...');
@@ -213,6 +254,7 @@ class EmiliaAI {
                 content: userMessage
             });
 
+            console.log('[GPT] Sending user message to GPT:', userMessage);
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
                 headers: {
@@ -231,6 +273,7 @@ class EmiliaAI {
                 const errorData = await response.json().catch(() => ({}));
                 const errorMessage = errorData.error?.message || response.statusText;
                 this.updateStatus(`Error: ${errorMessage}`);
+                console.error('[GPT] API error:', errorMessage);
                 throw new Error(`OpenAI API error: ${response.status} - ${errorMessage}`);
             }
 
@@ -238,6 +281,7 @@ class EmiliaAI {
             
             if (!data.choices || !data.choices[0] || !data.choices[0].message) {
                 this.updateStatus('Error: Invalid response from AI');
+                console.error('[GPT] Invalid response from OpenAI:', data);
                 throw new Error('Invalid response from OpenAI');
             }
 
@@ -247,6 +291,7 @@ class EmiliaAI {
                 content: aiMessage
             });
 
+            console.log('[GPT] AI response:', aiMessage);
             this.addMessage(aiMessage, 'assistant');
             this.updateStatus('Converting response to speech...');
             return aiMessage;
@@ -261,16 +306,54 @@ class EmiliaAI {
 
     async textToSpeech(text) {
         try {
+            // Only unlock audio if it hasn't already been unlocked
+            if (!audioUnlocked) {
+                unlockAudio();
+            }
+            console.log('[TTS] Sending text to ElevenLabs:', text);
             const audioUrl = await this.callElevenLabsAPI(text);
             if (audioUrl) {
+                let played = false;
+                // Try direct Audio playback first
                 const audio = new Audio(audioUrl);
-                audio.onended = () => {
-                };
-                await audio.play();
+                audio.onended = () => {};
+                try {
+                    await audio.play();
+                    console.log('[Audio] Playback started (Audio element)');
+                    played = true;
+                } catch (err) {
+                    console.warn('[Audio] play() failed, trying Web Audio API:', err);
+                }
+                // Fallback: Use Web Audio API for mobile browsers that block Audio()
+                if (!played) {
+                    try {
+                        const response = await fetch(audioUrl);
+                        const arrayBuffer = await response.arrayBuffer();
+                        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                        const buffer = await ctx.decodeAudioData(arrayBuffer);
+                        const source = ctx.createBufferSource();
+                        source.buffer = buffer;
+                        source.connect(ctx.destination);
+                        source.start(0);
+                        source.onended = () => ctx.close();
+                        played = true;
+                        console.log('[Audio] Playback started (Web Audio API)');
+                    } catch (err2) {
+                        console.error('[Audio] Web Audio API playback failed:', err2);
+                        this.updateStatus('Tap anywhere to enable sound.');
+                    }
+                }
+                if (!played) {
+                    this.updateStatus('Error: Could not play assistant voice. Tap to retry.');
+                }
                 return audioUrl;
+            } else {
+                this.updateStatus('Error: No audio URL received from ElevenLabs.');
+                console.error('[TTS] No audio URL received.');
             }
         } catch (error) {
             console.error('Text to speech error:', error);
+            this.updateStatus('Error: Text-to-speech failed.');
             throw error;
         }
     }
@@ -278,39 +361,49 @@ class EmiliaAI {
     async callElevenLabsAPI(text) {
         if (!config.ELEVEN_LABS_API_KEY || !config.ELEVEN_LABS_VOICE_ID) {
             this.updateStatus('Error: Eleven Labs credentials are not configured');
+            console.error('[TTS] Eleven Labs credentials missing.');
             throw new Error('Eleven Labs credentials are not configured');
         }
 
-        const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${config.ELEVEN_LABS_VOICE_ID}`, {
-            method: 'POST',
-            headers: {
-                'Accept': 'audio/mpeg',
-                'xi-api-key': config.ELEVEN_LABS_API_KEY,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                text: text,
-                model_id: 'eleven_monolingual_v1',
-                voice_settings: {
-                    stability: 0.5,
-                    similarity_boost: 0.5
-                }
-            })
-        });
+        try {
+            const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${config.ELEVEN_LABS_VOICE_ID}`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'audio/mpeg',
+                    'xi-api-key': config.ELEVEN_LABS_API_KEY,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    text: text,
+                    model_id: 'eleven_multilingual_v2',
+                    voice_settings: {
+                        stability: 0.5,
+                        similarity_boost: 0.5
+                    }
+                })
+            });
 
-        if (!response.ok) {
-            const errorMessage = await response.text();
-            this.updateStatus(`Error: ${errorMessage}`);
-            throw new Error(`Eleven Labs API error: ${response.status} - ${errorMessage}`);
+            if (!response.ok) {
+                const errorMessage = await response.text();
+                this.updateStatus(`Error: ${errorMessage}`);
+                console.error('[TTS] ElevenLabs API error:', errorMessage);
+                throw new Error(`Eleven Labs API error: ${response.status} - ${errorMessage}`);
+            }
+
+            const audioBlob = await response.blob();
+            if (!audioBlob || audioBlob.size === 0) {
+                this.updateStatus('Error: No audio received');
+                console.error('[TTS] No audio received from ElevenLabs.');
+                throw new Error('No audio received from Eleven Labs');
+            }
+
+            console.log('[TTS] Received audio from ElevenLabs, size:', audioBlob.size);
+            return URL.createObjectURL(audioBlob);
+        } catch (err) {
+            this.updateStatus('Error: Failed to fetch audio from ElevenLabs.');
+            console.error('[TTS] Fetch failed:', err);
+            throw err;
         }
-
-        const audioBlob = await response.blob();
-        if (!audioBlob || audioBlob.size === 0) {
-            this.updateStatus('Error: No audio received');
-            throw new Error('No audio received from Eleven Labs');
-        }
-
-        return URL.createObjectURL(audioBlob);
     }
 }
 
