@@ -25,9 +25,32 @@ body {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    position: fixed;
+    position: relative;
     overflow: hidden;
 }
+
+.footer-mic {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 16px 0 24px 0;
+    background: rgba(255,255,255,0.08);
+    z-index: 1000;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+@media (max-width: 480px) {
+  .footer-mic {
+    padding-bottom: 8vw;
+  }
+}
+
 
 .container {
     display: flex;
