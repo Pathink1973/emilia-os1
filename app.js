@@ -9,16 +9,21 @@ if (waveContainer) {
 
 // --- Audio unlock for mobile browsers ---
 let audioUnlocked = false;
+let audioContext = null;
+
 function unlockAudio() {
     if (audioUnlocked) return;
     try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const source = ctx.createBufferSource();
-        source.buffer = ctx.createBuffer(1, 1, 22050);
-        source.connect(ctx.destination);
-        source.start(0);
+        // Create audio context
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Create oscillator
+        const oscillator = audioContext.createOscillator();
+        oscillator.connect(audioContext.destination);
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.1);
+        
         audioUnlocked = true;
-        setTimeout(() => ctx.close(), 200);
         console.log('[Audio] Unlocked audio context');
     } catch (e) {
         console.warn('[Audio] Unlock failed:', e);
@@ -314,35 +319,54 @@ class EmiliaAI {
             const audioUrl = await this.callElevenLabsAPI(text);
             if (audioUrl) {
                 let played = false;
-                // Try direct Audio playback first
-                const audio = new Audio(audioUrl);
-                audio.onended = () => {};
-                try {
-                    await audio.play();
-                    console.log('[Audio] Playback started (Audio element)');
-                    played = true;
-                } catch (err) {
-                    console.warn('[Audio] play() failed, trying Web Audio API:', err);
-                }
-                // Fallback: Use Web Audio API for mobile browsers that block Audio()
-                if (!played) {
+                
+                // Always use Web Audio API for mobile devices
+                if (typeof window.ontouchstart !== 'undefined') {
                     try {
                         const response = await fetch(audioUrl);
                         const arrayBuffer = await response.arrayBuffer();
-                        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                        const buffer = await ctx.decodeAudioData(arrayBuffer);
-                        const source = ctx.createBufferSource();
+                        const buffer = await audioContext.decodeAudioData(arrayBuffer);
+                        const source = audioContext.createBufferSource();
                         source.buffer = buffer;
-                        source.connect(ctx.destination);
+                        source.connect(audioContext.destination);
                         source.start(0);
-                        source.onended = () => ctx.close();
+                        source.onended = () => {};
                         played = true;
                         console.log('[Audio] Playback started (Web Audio API)');
-                    } catch (err2) {
-                        console.error('[Audio] Web Audio API playback failed:', err2);
+                    } catch (err) {
+                        console.error('[Audio] Web Audio API playback failed:', err);
                         this.updateStatus('Tap anywhere to enable sound.');
                     }
+                } else {
+                    // Try direct Audio playback for desktop
+                    const audio = new Audio(audioUrl);
+                    audio.onended = () => {};
+                    try {
+                        await audio.play();
+                        console.log('[Audio] Playback started (Audio element)');
+                        played = true;
+                    } catch (err) {
+                        console.warn('[Audio] play() failed, trying Web Audio API:', err);
+                        
+                        // Fallback to Web Audio API
+                        try {
+                            const response = await fetch(audioUrl);
+                            const arrayBuffer = await response.arrayBuffer();
+                            const buffer = await audioContext.decodeAudioData(arrayBuffer);
+                            const source = audioContext.createBufferSource();
+                            source.buffer = buffer;
+                            source.connect(audioContext.destination);
+                            source.start(0);
+                            source.onended = () => {};
+                            played = true;
+                            console.log('[Audio] Playback started (Web Audio API)');
+                        } catch (err2) {
+                            console.error('[Audio] Web Audio API playback failed:', err2);
+                            this.updateStatus('Tap anywhere to enable sound.');
+                        }
+                    }
                 }
+                
                 if (!played) {
                     this.updateStatus('Error: Could not play assistant voice. Tap to retry.');
                 }
